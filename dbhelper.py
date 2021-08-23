@@ -1,5 +1,4 @@
 import sqlite3
-import datetime
 import dateutil.parser
 
 INCOME = 'הכנסה'
@@ -58,10 +57,10 @@ class DBHelper:
     def insert_col_data(self, item_sum, description, name, date, data_type, is_dollar):
         date = dateutil.parser.parse(date)
         if is_dollar:
-            self.add_dollar(item_sum, description, name, date, type)
+            self.add_dollar(item_sum, description, name, date, data_type)
             self.update_total_count(item_sum, data_type, DOLLAR_HISTORY_TABLE_NAME)
         else:
-            self.add_shekel(item_sum, description, name, date, type)
+            self.add_shekel(item_sum, description, name, str(date), data_type)
             stmt_user_a = "INSERT INTO USERA (sum, description, name, date, type) VALUES (?, ?, ?, ?, ?)"
             stmt_user_b = "INSERT INTO USERB (sum, description, name, date, type) VALUES (?, ?, ?, ?, ?)"
             args_user = (str(int(item_sum) / 2), description, name, date, data_type)
@@ -119,29 +118,64 @@ class DBHelper:
             self.conn.execute(stmt, args)
 
     def get_items(self):
+        items = {
+            "shekel": self.get_shekel_items(),
+            "dollar": self.get_dollar_items()
+        }
+        return items
+
+    def get_shekel_items(self):
         stmt = "SELECT * FROM SHEKELHISTORY"
         curr = self.conn.cursor()
         curr.execute(stmt)
         rows = curr.fetchall()
-        print(rows)
         return rows
 
-    def search_items(self, text, is_dollar):
-        stmt = "SELECT * from SHEKELHISTORY where date = (?)"
-        stmt2 = "SELECT * from DOLLARHISTORY where date = (?)"
+    def get_dollar_items(self):
+        stmt = "SELECT * FROM DOLLARHISTORY"
         curr = self.conn.cursor()
-        args = text
-        curr.execute(stmt, args)
-        curr.execute(stmt2,args)
+        curr.execute(stmt)
         rows = curr.fetchall()
         return rows
 
     def search_dates(self, text):
-        stmt = "SELECT * from SHEKELHISTORY where date like (?)"
-        stmt2 = "SELECT * from DOLLARHISTORY where date (?)"
+        rows = self.execute_date_search_query('SHEKELHISTORY', text)
+        rows = rows + self.execute_date_search_query('DOLLARHISTORY', text)
+        return rows
+
+    def search_description(self, text):
+        rows = self.execute_description_search_query('SHEKELHISTORY', text)
+        rows = rows + self.execute_description_search_query('DOLLARHISTORY', text)
+        return rows
+
+    def search_names(self, text):
+        rows = self.execute_name_search_query('SHEKELHISTORY', text)
+        rows = rows + self.execute_name_search_query('DOLLARHISTORY', text)
+        return rows
+
+    def search_sums(self, text):
+        rows = self.execute_sum_search_query('SHEKELHISTORY', text)
+        rows = rows + self.execute_sum_search_query('DOLLARHISTORY', text)
+        return rows
+
+    def execute_date_search_query(self, table_name, args):
+        stmt = f"SELECT * from {table_name} where date like ?"
+        return self.execute_search_query(stmt, [args+'%'])
+
+    def execute_name_search_query(self, table_name, args):
+        stmt = f"SELECT * from {table_name} where name like ?"
+        return self.execute_search_query(stmt, [args+'%'])
+
+    def execute_description_search_query(self, table_name, args):
+        stmt = f"SELECT * from {table_name} where description like ?"
+        return self.execute_search_query(stmt, [args + '%'])
+
+    def execute_sum_search_query(self, table_name, args):
+        stmt = f"SELECT * from {table_name} where sum = ?"
+        return self.execute_search_query(stmt, [args])
+
+    def execute_search_query(self, stmt, args):
         cur = self.conn.cursor()
-        args = [text]
         cur.execute(stmt, args)
-        cur.execute(stmt2, args)
         rows = cur.fetchall()
         return rows

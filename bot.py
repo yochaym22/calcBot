@@ -4,10 +4,8 @@ import requests
 import time
 import urllib
 import re
-
 import dbhelper
 from dbhelper import DBHelper, date_format
-import dateutil.parser
 import src
 
 UPDATE_ID_TUPLE_INDEX = 2
@@ -127,7 +125,7 @@ def text_to_dict(text):
 def handle_income_outcome_input(text, chat, state):
     if input_pattern.fullmatch(text) is not None:
         data = text_to_dict(text)
-        data["date"] = str(datetime.now())
+        data["date"] = str(datetime.datetime.now())
         if '$' in text:
             data["sum"] = data["sum"].replace('$', '')
             db.insert_col_data(data["sum"], data["description"], data["name"], data["date"], state, True)
@@ -160,11 +158,7 @@ def handle_state_request(state, chat, text):
     elif state == "הוצאה":
         handle_income_outcome_input(text, chat, state)
     elif state == "חיפוש":
-        for date in yield_valid_dates(text):
-            results = (db.search_dates(datetime.datetime.strftime(date, dbhelper.date_format)))
-            for result in results:
-                res = parse_tuple_to_dict(result)
-                send_message(res, chat)
+        handle_search(text, chat)
     elif state == "גיבוי":
         pass
     elif state == "איפוס":
@@ -173,6 +167,20 @@ def handle_state_request(state, chat, text):
         pass
     elif state == "היסטורית פעולות":
         pass
+
+
+def handle_search(text, chat):
+    results = []
+    if re.match("\d{1,2}[.,/,\,-]\d{1,2}[.,/,\,-]\d{2,4}", text):
+        for date in yield_valid_dates(text):
+            results = (db.search_dates(datetime.datetime.strftime(date, dbhelper.date_format)))
+    else:
+        results = db.search_names(text)
+        results = results + db.search_description(text )
+        results = results + db.search_sums(text)
+    for result in results:
+        res = parse_tuple_to_dict(result)
+        send_message(res, chat)
 
 
 def yield_valid_dates(text):
@@ -238,7 +246,11 @@ def build_keyboard(items):
 
 def main():
     db.setup()
-    db.get_items()
+    items = db.get_items()
+    for key in items:
+        print(key)
+        for item in items[key]:
+            print(item)
     last_update_id = None
     while True:
         updates = get_updates(last_update_id)
