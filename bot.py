@@ -98,7 +98,8 @@ def set_states(chat, text):
         for state in states:
             states[state] = False
         states["איפוס"] = True
-        send_message("reset mode", chat)
+        keyboard = build_reset_keyboard()
+        send_message("reset mode", chat, keyboard)
     elif text == 'עדכונים':
         for state in states:
             states[state] = False
@@ -152,6 +153,23 @@ def parse_tuple_to_dict(result):
     return result_str
 
 
+def build_reset_keyboard():
+    items = ['full reset', 'half reset']
+    keyboard = [[item] for item in items]
+    reply_markup = {"keyboard": keyboard, "one_time_keyboard": True}
+    return json.dumps(reply_markup)
+
+
+def handle_backup(text, chat):
+    result = db.sum_tables_until_date(text)
+    for key in result.keys():
+        send_message('the sum at the ' + key + ' bank until ' + text + ' is: ' + str(result[key]), chat)
+
+
+def handle_reset(text, chat):
+    pass
+
+
 def handle_state_request(state, chat, text):
     if state == "הכנסה":
         handle_income_outcome_input(text, chat, state)
@@ -160,9 +178,9 @@ def handle_state_request(state, chat, text):
     elif state == "חיפוש":
         handle_search(text, chat)
     elif state == "גיבוי":
-        pass
+        handle_backup(text, chat)
     elif state == "איפוס":
-        pass
+        handle_reset(text, chat)
     elif state == "עדכונים":
         pass
     elif state == "היסטורית פעולות":
@@ -246,6 +264,7 @@ def build_keyboard(items):
 
 def main():
     db.setup()
+    db.add_shekel(250, 'asd', 'asd ', '2021-08-25 19:35:31.216540', 'הכנסה')
     items = db.get_items()
     for key in items:
         print(key)

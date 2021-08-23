@@ -174,8 +174,21 @@ class DBHelper:
         stmt = f"SELECT * from {table_name} where sum = ?"
         return self.execute_search_query(stmt, [args])
 
+    def sum_tables_until_date(self, args):
+        stmt = "SELECT * from SHEKELHISTORY where date < date(?)"
+        stmt2 = "SELECT * from DOLLARHISTORY where date < date(?)"
+        results = {"shekel": self.execute_search_query(stmt, args),
+                   "dollar": self.execute_search_query(stmt2, args)}
+        sun_dict ={"shekel": 0,
+                   "dollar": 0}
+        for key in results.keys():
+            for item in results[key]:
+                sun_dict[key] += item[0]
+
+        return sun_dict
+
     def execute_search_query(self, stmt, args):
         cur = self.conn.cursor()
-        cur.execute(stmt, args)
+        cur.execute(stmt, [args])
         rows = cur.fetchall()
         return rows
