@@ -13,7 +13,7 @@ URL = "https://api.telegram.org/bot{}/".format(TOKEN)
 admins = {"820613555": True}
 states = {"הכנסה": False, "הוצאה": False, "חיפוש": False, "גיבוי": False, "איפוס": False, "עדכונים": False,
           "היסטוריית פעולות": False}
-users = [1979257669]
+users = [src.user]
 # pattern for the input text for income/outcome
 input_pattern = re.compile(r'\d+\$?\s\w+\s\w+')
 digits_pattern = re.compile(r'\d')
