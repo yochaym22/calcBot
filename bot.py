@@ -10,7 +10,7 @@ import src
 UPDATE_ID_TUPLE_INDEX = 2
 TOKEN = src.TOKEN
 URL = "https://api.telegram.org/bot{}/".format(TOKEN)
-admins = {"820613555": True}
+admins = {src.admin: True}
 states = {"הכנסה": False, "הוצאה": False, "חיפוש": False, "גיבוי": False, "איפוס": False, "עדכונים": False,
           "היסטוריית פעולות": False}
 users = [src.user]
