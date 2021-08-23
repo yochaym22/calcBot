@@ -139,6 +139,21 @@ def handle_income_outcome_input(text, chat, state):
         send_message("invalid input", chat)
 
 
+def parse_tuple_to_dict(result):
+    result = {
+        "type": result[4],
+        "amount": result[0],
+        "name": result[1],
+        "description": result[2],
+        "date": result[3]
+    }
+    result_str = str(result)
+    chars_to_replace = ['{', '}', "'"]
+    for char in chars_to_replace:
+        result_str = result_str.replace(char, '')
+    return result_str
+
+
 def handle_state_request(state, chat, text):
     if state == "הכנסה":
         handle_income_outcome_input(text, chat, state)
@@ -146,7 +161,10 @@ def handle_state_request(state, chat, text):
         handle_income_outcome_input(text, chat, state)
     elif state == "חיפוש":
         for date in yield_valid_dates(text):
-            print(datetime.datetime.strftime(date, dbhelper.date_format))
+            results = (db.search_dates(datetime.datetime.strftime(date, dbhelper.date_format)))
+            for result in results:
+                res = parse_tuple_to_dict(result)
+                send_message(res, chat)
     elif state == "גיבוי":
         pass
     elif state == "איפוס":

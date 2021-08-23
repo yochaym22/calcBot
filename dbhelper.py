@@ -5,7 +5,7 @@ import dateutil.parser
 INCOME = 'הכנסה'
 DOLLAR_HISTORY_TABLE_NAME = "DOLLARHISTORY"
 SHEKEL_HISTORY_TABLE_NAME = "SHEKELHISTORY"
-date_format = "%d-%m-%Y"
+date_format = "%Y-%m-%d"
 
 
 class DBHelper:
@@ -134,4 +134,14 @@ class DBHelper:
         curr.execute(stmt, args)
         curr.execute(stmt2,args)
         rows = curr.fetchall()
+        return rows
+
+    def search_dates(self, text):
+        stmt = "SELECT * from SHEKELHISTORY where date like (?)"
+        stmt2 = "SELECT * from DOLLARHISTORY where date (?)"
+        cur = self.conn.cursor()
+        args = [text]
+        cur.execute(stmt, args)
+        cur.execute(stmt2, args)
+        rows = cur.fetchall()
         return rows
