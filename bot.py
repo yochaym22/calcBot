@@ -4,7 +4,10 @@ import requests
 import time
 import urllib
 import re
-from dbhelper import DBHelper
+
+import dbhelper
+from dbhelper import DBHelper, date_format
+import dateutil.parser
 import src
 
 UPDATE_ID_TUPLE_INDEX = 2
@@ -18,6 +21,7 @@ users = [src.user]
 input_pattern = re.compile(r'\d+\$?\s\w+\s\w+')
 digits_pattern = re.compile(r'\d')
 date_pattern = re.compile(r'\d[0123]')
+date_formats = ["%d-%m-%Y", "%d.%m.%Y", "%d/%m/%Y", "%d-%m-%y", "%d.%m.%y", "%d/%m/%y"]
 db = DBHelper()
 
 
@@ -142,7 +146,7 @@ def handle_state_request(state, chat, text):
         handle_income_outcome_input(text, chat, state)
     elif state == "חיפוש":
         for date in yield_valid_dates(text):
-            print(date)
+            print(datetime.datetime.strftime(date, dbhelper.date_format))
     elif state == "גיבוי":
         pass
     elif state == "איפוס":
@@ -154,11 +158,14 @@ def handle_state_request(state, chat, text):
 
 
 def yield_valid_dates(text):
-    print(type(text))
-    for match in re.finditer(r"\d{1,2}[.,/,\,-]\d{1,2}-\d{4}", text):
+    for match in re.finditer(r"\d{1,2}[.,/,\,-]\d{1,2}[.,/,\,-]\d{2,4}", text):
         try:
-            date = datetime.datetime.strptime(match.group(0), "%m-%d-%Y")
-            yield date
+            for date_format in date_formats:
+                try:
+                    date = datetime.datetime.strptime(match.group(0), date_format)
+                    yield date
+                except ValueError:
+                    pass
         except ValueError as error:
             print(error)
 

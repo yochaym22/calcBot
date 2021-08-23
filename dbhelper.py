@@ -1,8 +1,11 @@
 import sqlite3
+import datetime
+import dateutil.parser
 
 INCOME = 'הכנסה'
 DOLLAR_HISTORY_TABLE_NAME = "DOLLARHISTORY"
 SHEKEL_HISTORY_TABLE_NAME = "SHEKELHISTORY"
+date_format = "%d-%m-%Y"
 
 
 class DBHelper:
@@ -53,24 +56,28 @@ class DBHelper:
         self.conn.commit()
 
     def insert_col_data(self, item_sum, description, name, date, data_type, is_dollar):
+        date = dateutil.parser.parse(date)
         if is_dollar:
-            stmt = "INSERT INTO DOLLARHISTORY (sum, description, name, date, type ) VALUES (?, ?, ?, ?, ?)"
-            args = (item_sum, description, name, date, data_type)
+            self.add_dollar(item_sum, description, name, date, type)
             self.update_total_count(item_sum, data_type, DOLLAR_HISTORY_TABLE_NAME)
         else:
-            stmt = "INSERT INTO SHEKELHISTORY (sum, description, name, date, type ) VALUES (?, ?, ?, ?, ?)"
+            self.add_shekel(item_sum, description, name, date, type)
             stmt_user_a = "INSERT INTO USERA (sum, description, name, date, type) VALUES (?, ?, ?, ?, ?)"
             stmt_user_b = "INSERT INTO USERB (sum, description, name, date, type) VALUES (?, ?, ?, ?, ?)"
-            args = (item_sum, description, name, date, data_type)
             args_user = (str(int(item_sum) / 2), description, name, date, data_type)
             self.conn.execute(stmt_user_a, args_user)
             self.conn.execute(stmt_user_b, args_user)
             self.update_total_count(item_sum, data_type, SHEKEL_HISTORY_TABLE_NAME)
-        self.conn.execute(stmt, args)
         self.conn.commit()
 
     def add_dollar(self, item_sum, description, name, date, type):
         stmt = "INSERT INTO DOLLARHISTORY (sum, description, name, date, type) VALUES (?, ?, ?, ?, ?)"
+        args = (item_sum, description, name, date, type)
+        self.conn.execute(stmt, args)
+        self.conn.commit()
+
+    def add_shekel(self, item_sum, description, name, date, type):
+        stmt = "INSERT INTO SHEKELHISTORY (sum, description, name, date, type) VALUES (?, ?, ?, ?, ?)"
         args = (item_sum, description, name, date, type)
         self.conn.execute(stmt, args)
         self.conn.commit()
