@@ -1,13 +1,14 @@
-from datetime import datetime
+import datetime
 import json
 import requests
 import time
 import urllib
 import re
 from dbhelper import DBHelper
+import src
 
 UPDATE_ID_TUPLE_INDEX = 2
-TOKEN = "1932158682:AAGI6P5W5lZhYaX5EvdY-6tyLisHrJa-E5k"
+TOKEN = src.TOKEN
 URL = "https://api.telegram.org/bot{}/".format(TOKEN)
 admins = {"820613555": True}
 states = {"הכנסה": False, "הוצאה": False, "חיפוש": False, "גיבוי": False, "איפוס": False, "עדכונים": False,
@@ -153,12 +154,13 @@ def handle_state_request(state, chat, text):
 
 
 def yield_valid_dates(text):
-    for match in re.finditer(r"\d{1,2}-\d{1,2}-\d{4}", text):
+    print(type(text))
+    for match in re.finditer(r"\d{1,2}[.,/,\,-]\d{1,2}-\d{4}", text):
         try:
-            datetime.datetime.strptime(match.group(0), "%m-%d-%Y")
-            yield match.group(0)
-        except ValueError:
-            pass
+            date = datetime.datetime.strptime(match.group(0), "%m-%d-%Y")
+            yield date
+        except ValueError as error:
+            print(error)
 
 
 def get_current_state():
@@ -211,6 +213,7 @@ def build_keyboard(items):
 
 def main():
     db.setup()
+    db.get_items()
     last_update_id = None
     while True:
         updates = get_updates(last_update_id)

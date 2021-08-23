@@ -112,7 +112,7 @@ class DBHelper:
             self.conn.execute(stmt, args)
 
     def get_items(self):
-        stmt = "SELECT * FROM BANK"
+        stmt = "SELECT * FROM SHEKELHISTORY"
         curr = self.conn.cursor()
         curr.execute(stmt)
         rows = curr.fetchall()
