@@ -265,6 +265,7 @@ def build_keyboard(items):
 def main():
     db.setup()
     db.add_shekel(250, 'asd', 'asd ', '2021-08-25 19:35:31.216540', 'הכנסה')
+    db.add_shekel(250, 'asd', 'asd ', '2021-08-25 19:35:31.216540', 'הכנסה')
     items = db.get_items()
     for key in items:
         print(key)
