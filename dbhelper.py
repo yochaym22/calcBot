@@ -64,9 +64,9 @@ class DBHelper:
                 item_sum = '-' + item_sum
             self.update_bank_count_at('dollar', item_sum)
         else:
-            self.add_item_to_table(item_sum, description, name, str(date), data_type, SHEKEL_HISTORY_TABLE_NAME)
-            self.add_item_to_table(str(int(item_sum) / 2), description, name, str(date), data_type, USER_A_TABLE_NAME)
-            self.add_item_to_table(str(int(item_sum) / 2), description, name, str(date), data_type, USER_B_TABLE_NAME)
+            self.add_item_to_table(str(int(item_sum) / 2), description, name, str(date), data_type, SHEKEL_HISTORY_TABLE_NAME)
+            self.add_item_to_table(str(int(item_sum) / 4), description, name, str(date), data_type, USER_A_TABLE_NAME)
+            self.add_item_to_table(str(int(item_sum) / 4), description, name, str(date), data_type, USER_B_TABLE_NAME)
             if data_type == OUTCOME:
                 item_sum = '-' + item_sum
             else:
@@ -87,12 +87,8 @@ class DBHelper:
         self.conn.commit()
 
     def update_bank_count_at(self, table_name, amount):
-        stmt = 'SELECT sum from BANK where name = ?'
-        args = [table_name]
-        current_amount = self.conn.cursor()
-        current_amount.execute(stmt, args)
-        current_amount = current_amount.fetchone()
-        new_sum = current_amount[0] + int(float(amount))
+        current_amount = self.get_items_from_table(table_name)
+        new_sum = current_amount + int(float(amount))
         stmt = f"UPDATE BANK set sum = (?) WHERE name = ?"
         args = [new_sum, table_name]
         self.conn.execute(stmt, args)
@@ -166,6 +162,14 @@ class DBHelper:
                 sum_dict[key] += item[0]
 
         return sum_dict
+
+    def get_sum_for_table(self, table_name):
+        stmt = 'SELECT sum from BANK where name = ?'
+        args = [table_name]
+        current_amount = self.conn.cursor()
+        current_amount.execute(stmt, args)
+        current_amount = current_amount.fetchone()
+        return current_amount[0]
 
     def execute_search_query(self, stmt, args):
         cur = self.conn.cursor()

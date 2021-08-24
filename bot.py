@@ -11,11 +11,14 @@ import src
 UPDATE_ID_TUPLE_INDEX = 2
 TOKEN = src.TOKEN
 URL = "https://api.telegram.org/bot{}/".format(TOKEN)
-admins = {src.admin: True}
+admins = {}
+users = {src.admin: False}
 states = {"הכנסה": False, "הוצאה": False, "חיפוש": False, "גיבוי": False, "איפוס": False, "עדכונים": False,
           "היסטוריית פעולות": False}
 update_states = {'משתמש א': False, 'משתמש ב': False, 'קופה': False, 'קופה$': False}
-users = [src.user]
+user_states = {'משתמש א': False, 'משתמש ב': False, 'קופות': False}
+sums_states = {'קופה': False, 'קופה$': False}
+# users = [src.admin]
 # pattern for the input text for income/outcome
 input_pattern = re.compile(r'\d+\$?\s\w+\s\w+')
 digits_pattern = re.compile(r'\d')
@@ -70,7 +73,8 @@ def handle_updates(updates):
         if str(chat) in admins.keys():
             handle_admin_updates(updates, chat, text, admins[str(chat)])
         else:
-            handle_user_updates(updates, chat, text)
+            print(type(users))
+            handle_user_updates(updates, chat, text, users[str(chat)])
 
 
 def send_message(text, chat_id, reply_markup=None):
@@ -98,7 +102,7 @@ def build_admin_keyboard():
 
 
 def build_user_keyboard():
-    items = ['משתמש א', 'משתמש ב']
+    items = ['משתמש א', 'משתמש ב', 'קופות']
     keyboard = [[item] for item in items]
     reply_markup = {"keyboard": keyboard, "one_time_keyboard": True}
     return json.dumps(reply_markup)
@@ -113,6 +117,13 @@ def build_reset_keyboard():
 
 def build_updates_keyboard():
     items = ['משתמש א', 'משתמש ב', 'קופה', 'קופה$']
+    keyboard = [[item] for item in items]
+    reply_markup = {"keyboard": keyboard, "one_time_keyboard": True}
+    return json.dumps(reply_markup)
+
+
+def build_users_sums_keyboard():
+    items = ['קופה', 'קופה$']
     keyboard = [[item] for item in items]
     reply_markup = {"keyboard": keyboard, "one_time_keyboard": True}
     return json.dumps(reply_markup)
@@ -334,9 +345,50 @@ def handle_admin_updates(updates, chat, text, is_first_visit):
         handle_state_request(state, chat, text)
 
 
-def handle_user_updates(updates, chat, text):
+def set_user_states(chat, text):
+    if text == 'משתמש א':
+        update_states_dict(user_states, 'משתמש א')
+        send_message("user a sum is:", chat)
+    elif text == 'משתמש ב':
+        update_states_dict(user_states, 'משתמש ב')
+        send_message("user b sum is", chat)
+    elif text == 'קופות':
+        update_states_dict(states, 'קופות')
+        send_message("sums mode", chat)
+
+
+def handle_user_a_sum(text, chat, state):
+    pass
+
+
+def handle_user_b_sum(text, chat, state):
+    pass
+
+
+def handle_sums(text, chat):
+    pass
+
+
+def handle_user_state_request(state, chat, text):
+    if state == "משתמש א":
+        handle_user_a_sum(text, chat, state)
+    elif state == "משתמש ב":
+        handle_user_b_sum(text, chat, state)
+    elif state == "קופות":
+        handle_sums(text, chat)
+
+
+def handle_user_updates(updates, chat, text, is_first_visit):
     keyboard = build_user_keyboard()
-    send_message("hi user", chat, keyboard)
+    if is_first_visit:
+        send_message("hi user", chat, keyboard)
+        users[str(chat)] = False
+    if text in user_states.keys():
+        set_user_states(chat, text)
+    else:
+        user_state = get_current_state(user_states)
+        handle_user_state_request(user_state, chat, text)
+
 
 
 def main():
