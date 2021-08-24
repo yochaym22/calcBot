@@ -171,12 +171,7 @@ def set_states(chat, text):
         send_message("update mode", chat, keyboard)
     elif text == 'היסטוריית פעולות':
         update_states_dict(states, 'היסטוריית פעולות')
-        send_message("history mode", chat)
-        db.get_items()
-
-
-def handle_update_sum_at(table_name, text, chat):
-    pass
+        send_message("history mode press any key", chat)
 
 
 def handle_state_request(state, chat, text):
@@ -206,19 +201,35 @@ def handle_state_request(state, chat, text):
         elif re.fullmatch(r'^[0-9]+$', text):
             update_state = get_current_state(update_states)
             if update_state == 'קופה':
-                handle_update_sum_at('SHEKELBANK', text, chat)
+                handle_update_sum_at(dbhelper.SHEKEL_HISTORY_TABLE_NAME, text, chat)
             elif update_state == 'קופה$':
-                handle_update_sum_at('SHEKELBANK', text, chat)
+                handle_update_sum_at(dbhelper.DOLLAR_HISTORY_TABLE_NAME, text, chat)
             elif update_state == 'משתמש א':
-                handle_update_sum_at('USERA', text, chat)
+                handle_update_sum_at(dbhelper.USER_A_TABLE_NAME, text, chat)
             elif update_state == 'משתמש ב':
-                handle_update_sum_at('USERB', text, chat)
+                handle_update_sum_at(dbhelper.USER_B_TABLE_NAME, text, chat)
             else:
                 send_message('invalid input', chat)
         else:
             send_message('invalid input', chat)
-    elif state == "היסטורית פעולות":
-        pass
+    elif state == "היסטוריית פעולות":
+        send_message('total history', chat)
+        handle_history(chat)
+        states['היסטוריית פעולות'] = False
+        send_message('end of history :)', chat)
+
+
+def handle_updates_state(text, chat):
+    if text == 'קופה ':
+        send_message('enter new money amount', chat)
+    elif text == 'קופה$':
+        send_message('enter new dollar amount', chat)
+    elif text == 'משתמש ב':
+        send_message('enter new user b amount', chat)
+    elif text == 'משתמש א':
+        send_message('enter new user a amount', chat)
+    else:
+        send_message('invalid input', chat)
 
 
 def update_states_dict(dictionary , true_state):
@@ -261,19 +272,6 @@ def handle_reset(text, chat):
     pass
 
 
-def handle_updates_state(text, chat):
-    if text == 'קופה ':
-        send_message('enter new money amount', chat)
-    elif text == 'קופה$':
-        send_message('enter new dollar amount', chat)
-    elif text == 'משתמש ב':
-        send_message('enter new user b amount', chat)
-    elif text == 'משתמש א':
-        send_message('enter new user a amount', chat)
-    else:
-        send_message('invalid input', chat)
-
-
 def handle_search(text, chat):
     results = []
     if re.match("\d{1,2}[.,/,\,-]\d{1,2}[.,/,\,-]\d{2,4}", text):
@@ -299,6 +297,27 @@ def yield_valid_dates(text):
                     pass
         except ValueError as error:
             print(error)
+
+
+def handle_update_sum_at(table_name, text, chat):
+    if table_name == dbhelper.SHEKEL_HISTORY_TABLE_NAME:
+        db.update_sum_at('shekel', text)
+    if table_name == dbhelper.DOLLAR_HISTORY_TABLE_NAME:
+        db.update_sum_at('dollar', text)
+    if table_name == dbhelper.USER_A_TABLE_NAME:
+        db.update_sum_at('usera', text)
+    if table_name == dbhelper.USER_B_TABLE_NAME:
+        db.update_sum_at('userb', text)
+    db.add_item_to_table(text, table_name + ' updated sum to: ' + text, str(chat), str(datetime.datetime.now()),
+                         'עדכון', table_name)
+
+
+def handle_history(chat):
+    items_dict = db.get_items()
+    for key in items_dict.keys():
+        send_message(key, chat)
+        for item in items_dict[key]:
+            send_message(str(item), chat)
 
 # Users type handlers
 

@@ -4,8 +4,8 @@ import dateutil.parser
 OUTCOME = 'הוצאה'
 DOLLAR_HISTORY_TABLE_NAME = "DOLLARHISTORY"
 SHEKEL_HISTORY_TABLE_NAME = "SHEKELHISTORY"
-USER_A_TABLE_NAME ="USERA"
-USER_B_TABLE_NAME ="USERB"
+USER_A_TABLE_NAME = "USERA"
+USER_B_TABLE_NAME = "USERB"
 date_format = "%Y-%m-%d"
 
 
@@ -65,13 +65,13 @@ class DBHelper:
             self.update_bank_count_at('dollar', item_sum)
         else:
             self.add_item_to_table(item_sum, description, name, str(date), data_type, SHEKEL_HISTORY_TABLE_NAME)
-            self.add_item_to_table(str(int(item_sum)/2), description, name, str(date), data_type, USER_A_TABLE_NAME)
-            self.add_item_to_table(str(int(item_sum)/2), description, name, str(date), data_type, USER_B_TABLE_NAME)
+            self.add_item_to_table(str(int(item_sum) / 2), description, name, str(date), data_type, USER_A_TABLE_NAME)
+            self.add_item_to_table(str(int(item_sum) / 2), description, name, str(date), data_type, USER_B_TABLE_NAME)
             if data_type == OUTCOME:
                 item_sum = '-' + item_sum
             else:
-                self.update_bank_count_at('usera', str(int(item_sum)/2))
-                self.update_bank_count_at('userb', str(int(item_sum)/2))
+                self.update_bank_count_at('usera', str(int(item_sum) / 2))
+                self.update_bank_count_at('userb', str(int(item_sum) / 2))
             self.update_bank_count_at('shekel', item_sum)
 
     def add_item_to_table(self, item_sum, description, name, date, type, table_name):
@@ -98,13 +98,16 @@ class DBHelper:
         self.conn.execute(stmt, args)
         self.conn.commit()
 
+    def update_sum_at(self, table_name, amount):
+        stmt = 'UPDATE BANK set sum = ? where name = ?'
+        args = [amount, table_name]
+        self.conn.execute(stmt, args)
+        self.conn.commit()
+
     def get_items(self):
         items = {
             "shekel": self.get_items_from_table(SHEKEL_HISTORY_TABLE_NAME),
             "dollar": self.get_items_from_table(DOLLAR_HISTORY_TABLE_NAME),
-            "user a": self.get_items_from_table(USER_A_TABLE_NAME),
-            "user b": self.get_items_from_table(USER_B_TABLE_NAME),
-            "bank": self.get_items_from_table('BANK')
         }
         return items
 
@@ -137,11 +140,11 @@ class DBHelper:
 
     def execute_date_search_query(self, table_name, args):
         stmt = f"SELECT * from {table_name} where date like ?"
-        return self.execute_search_query(stmt, [args+'%'])
+        return self.execute_search_query(stmt, [args + '%'])
 
     def execute_name_search_query(self, table_name, args):
         stmt = f"SELECT * from {table_name} where name like ?"
-        return self.execute_search_query(stmt, [args+'%'])
+        return self.execute_search_query(stmt, [args + '%'])
 
     def execute_description_search_query(self, table_name, args):
         stmt = f"SELECT * from {table_name} where description like ?"
@@ -152,20 +155,20 @@ class DBHelper:
         return self.execute_search_query(stmt, [args])
 
     def sum_tables_until_date(self, args):
-        stmt = "SELECT * from SHEKELHISTORY where date < date(?)"
-        stmt2 = "SELECT * from DOLLARHISTORY where date < date(?)"
+        stmt = "SELECT * from SHEKELHISTORY where date < (?)"
+        stmt2 = "SELECT * from DOLLARHISTORY where date < (?)"
         results = {"shekel": self.execute_search_query(stmt, args),
                    "dollar": self.execute_search_query(stmt2, args)}
-        sun_dict ={"shekel": 0,
-                   "dollar": 0}
+        sum_dict = {"shekel": 0,
+                    "dollar": 0}
         for key in results.keys():
             for item in results[key]:
-                sun_dict[key] += item[0]
+                sum_dict[key] += item[0]
 
-        return sun_dict
+        return sum_dict
 
     def execute_search_query(self, stmt, args):
         cur = self.conn.cursor()
-        cur.execute(stmt, args)
+        cur.execute(stmt, [args])
         rows = cur.fetchall()
         return rows
