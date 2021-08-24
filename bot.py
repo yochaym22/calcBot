@@ -14,6 +14,7 @@ URL = "https://api.telegram.org/bot{}/".format(TOKEN)
 admins = {src.admin: True}
 states = {"הכנסה": False, "הוצאה": False, "חיפוש": False, "גיבוי": False, "איפוס": False, "עדכונים": False,
           "היסטוריית פעולות": False}
+update_states = {'משתמש א': False, 'משתמש ב': False, 'קופה': False, 'קופה$': False}
 users = [src.user]
 # pattern for the input text for income/outcome
 input_pattern = re.compile(r'\d+\$?\s\w+\s\w+')
@@ -21,6 +22,8 @@ digits_pattern = re.compile(r'\d')
 date_pattern = re.compile(r'\d[0123]')
 date_formats = ["%d-%m-%Y", "%d.%m.%Y", "%d/%m/%Y", "%d-%m-%y", "%d.%m.%y", "%d/%m/%y"]
 db = DBHelper()
+
+# Requests handlers
 
 
 def get_url(url):
@@ -59,6 +62,34 @@ def get_last_chat_id_text_update_id(updates):
     return text, chat_id, update_id
 
 
+def handle_updates(updates):
+    for update in updates["result"]:
+        text = update["message"]["text"]
+        chat = update["message"]["chat"]["id"]
+        # items = db.get_items(chat)
+        if str(chat) in admins.keys():
+            handle_admin_updates(updates, chat, text, admins[str(chat)])
+        else:
+            handle_user_updates(updates, chat, text)
+
+
+def send_message(text, chat_id, reply_markup=None):
+    text = urllib.parse.quote_plus(text)
+    url = URL + "sendMessage?text={}&chat_id={}&parse_mode=Markdown".format(text, chat_id)
+    if reply_markup:
+        url += "&reply_markup={}".format(reply_markup)
+    get_url(url)
+
+
+# Keyboards
+
+
+def build_keyboard(items):
+    keyboard = [[item] for item in items]
+    reply_markup = {"keyboard": keyboard, "one_time_keyboard": True}
+    return json.dumps(reply_markup)
+
+
 def build_admin_keyboard():
     items = ['הכנסה', 'הוצאה', 'חיפוש', 'גיבוי', 'איפוס', 'עדכונים', 'היסטוריית פעולות']
     keyboard = [[item] for item in items]
@@ -73,44 +104,21 @@ def build_user_keyboard():
     return json.dumps(reply_markup)
 
 
-def set_states(chat, text):
-    if text == 'הכנסה':
-        for state in states:
-            states[state] = False
-        states["הכנסה"] = True
-        send_message("enter income and details", chat)
-    elif text == 'הוצאה':
-        for state in states:
-            states[state] = False
-        states["הוצאה"] = True
-        send_message("enter outcome", chat)
-    elif text == 'חיפוש':
-        for state in states:
-            states[state] = False
-        states["חיפוש"] = True
-        send_message("search mode", chat)
-    elif text == 'גיבוי':
-        for state in states:
-            states[state] = False
-        states["גיבוי"] = True
-        send_message("backup mode", chat)
-    elif text == 'איפוס':
-        for state in states:
-            states[state] = False
-        states["איפוס"] = True
-        keyboard = build_reset_keyboard()
-        send_message("reset mode", chat, keyboard)
-    elif text == 'עדכונים':
-        for state in states:
-            states[state] = False
-        states["עדכונים"] = True
-        send_message("update mode", chat)
-    elif text == 'היסטוריית פעולות':
-        for state in states:
-            states[state] = False
-        states["היסטוריית פעולות"] = True
-        send_message("history mode", chat)
-        db.get_items()
+def build_reset_keyboard():
+    items = ['full reset', 'half reset']
+    keyboard = [[item] for item in items]
+    reply_markup = {"keyboard": keyboard, "one_time_keyboard": True}
+    return json.dumps(reply_markup)
+
+
+def build_updates_keyboard():
+    items = ['משתמש א', 'משתמש ב', 'קופה', 'קופה$']
+    keyboard = [[item] for item in items]
+    reply_markup = {"keyboard": keyboard, "one_time_keyboard": True}
+    return json.dumps(reply_markup)
+
+
+# Parsers
 
 
 def text_to_dict(text):
@@ -121,6 +129,111 @@ def text_to_dict(text):
         "name": words[2],
     }
     return words_dict
+
+
+def parse_tuple_to_dict(result):
+    result = {
+        "type": result[4],
+        "amount": result[0],
+        "name": result[1],
+        "description": result[2],
+        "date": result[3]
+    }
+    result_str = str(result)
+    chars_to_replace = ['{', '}', "'"]
+    for char in chars_to_replace:
+        result_str = result_str.replace(char, '')
+    return result_str
+
+# States handlers
+
+
+def set_states(chat, text):
+    if text == 'הכנסה':
+        update_states_dict(states, 'הכנסה')
+        send_message("enter income and details", chat)
+    elif text == 'הוצאה':
+        update_states_dict(states, 'הוצאה')
+        send_message("enter outcome", chat)
+    elif text == 'חיפוש':
+        update_states_dict(states, 'חיפוש')
+        send_message("search mode", chat)
+    elif text == 'גיבוי':
+        update_states_dict(states, 'גיבוי')
+        send_message("backup mode", chat)
+    elif text == 'איפוס':
+        update_states_dict(states, 'איפוס')
+        keyboard = build_reset_keyboard()
+        send_message("reset mode", chat, keyboard)
+    elif text == 'עדכונים':
+        update_states_dict(states, 'עדכונים')
+        keyboard = build_updates_keyboard()
+        send_message("update mode", chat, keyboard)
+    elif text == 'היסטוריית פעולות':
+        update_states_dict(states, 'היסטוריית פעולות')
+        send_message("history mode", chat)
+        db.get_items()
+
+
+def handle_update_sum_at(table_name, text, chat):
+    pass
+
+
+def handle_state_request(state, chat, text):
+    if state == "הכנסה":
+        handle_income_outcome_input(text, chat, state)
+    elif state == "הוצאה":
+        handle_income_outcome_input(text, chat, state)
+    elif state == "חיפוש":
+        handle_search(text, chat)
+    elif state == "גיבוי":
+        handle_backup(text, chat)
+    elif state == "איפוס":
+        handle_reset(text, chat)
+    elif state == "עדכונים":
+        if text == 'קופה':
+            update_states_dict(update_states, 'קופה')
+            send_message('enter new amount for the shekel bank', chat)
+        elif text == 'קופה$':
+            update_states_dict(update_states, 'קופה$')
+            send_message('enter new amount for the dollar bank', chat)
+        elif text == 'משתמש א':
+            update_states_dict(update_states, 'משתמש א')
+            send_message('enter new amount for user a bank', chat)
+        elif text == 'משתמש ב':
+            update_states_dict(update_states, 'משתמש ב')
+            send_message('enter new amount for user b bank', chat)
+        elif re.fullmatch(r'^[0-9]+$', text):
+            update_state = get_current_state(update_states)
+            if update_state == 'קופה':
+                handle_update_sum_at('SHEKELBANK', text, chat)
+            elif update_state == 'קופה$':
+                handle_update_sum_at('SHEKELBANK', text, chat)
+            elif update_state == 'משתמש א':
+                handle_update_sum_at('USERA', text, chat)
+            elif update_state == 'משתמש ב':
+                handle_update_sum_at('USERB', text, chat)
+            else:
+                send_message('invalid input', chat)
+        else:
+            send_message('invalid input', chat)
+    elif state == "היסטורית פעולות":
+        pass
+
+
+def update_states_dict(dictionary , true_state):
+    for state in dictionary:
+        dictionary[state] = False
+    dictionary[true_state] = True
+
+
+def get_current_state(dictionary):
+    for state in dictionary:
+        if dictionary[state]:
+            return state
+
+
+# Button handlers
 
 
 def handle_income_outcome_input(text, chat, state):
@@ -138,28 +251,6 @@ def handle_income_outcome_input(text, chat, state):
         send_message("invalid input", chat)
 
 
-def parse_tuple_to_dict(result):
-    result = {
-        "type": result[4],
-        "amount": result[0],
-        "name": result[1],
-        "description": result[2],
-        "date": result[3]
-    }
-    result_str = str(result)
-    chars_to_replace = ['{', '}', "'"]
-    for char in chars_to_replace:
-        result_str = result_str.replace(char, '')
-    return result_str
-
-
-def build_reset_keyboard():
-    items = ['full reset', 'half reset']
-    keyboard = [[item] for item in items]
-    reply_markup = {"keyboard": keyboard, "one_time_keyboard": True}
-    return json.dumps(reply_markup)
-
-
 def handle_backup(text, chat):
     result = db.sum_tables_until_date(text)
     for key in result.keys():
@@ -170,21 +261,17 @@ def handle_reset(text, chat):
     pass
 
 
-def handle_state_request(state, chat, text):
-    if state == "הכנסה":
-        handle_income_outcome_input(text, chat, state)
-    elif state == "הוצאה":
-        handle_income_outcome_input(text, chat, state)
-    elif state == "חיפוש":
-        handle_search(text, chat)
-    elif state == "גיבוי":
-        handle_backup(text, chat)
-    elif state == "איפוס":
-        handle_reset(text, chat)
-    elif state == "עדכונים":
-        pass
-    elif state == "היסטורית פעולות":
-        pass
+def handle_updates_state(text, chat):
+    if text == 'קופה ':
+        send_message('enter new money amount', chat)
+    elif text == 'קופה$':
+        send_message('enter new dollar amount', chat)
+    elif text == 'משתמש ב':
+        send_message('enter new user b amount', chat)
+    elif text == 'משתמש א':
+        send_message('enter new user a amount', chat)
+    else:
+        send_message('invalid input', chat)
 
 
 def handle_search(text, chat):
@@ -213,11 +300,7 @@ def yield_valid_dates(text):
         except ValueError as error:
             print(error)
 
-
-def get_current_state():
-    for state in states:
-        if states[state]:
-            return state
+# Users type handlers
 
 
 def handle_admin_updates(updates, chat, text, is_first_visit):
@@ -228,7 +311,7 @@ def handle_admin_updates(updates, chat, text, is_first_visit):
     if text in states.keys():
         set_states(chat, text)
     else:
-        state = get_current_state()
+        state = get_current_state(states)
         handle_state_request(state, chat, text)
 
 
@@ -237,35 +320,8 @@ def handle_user_updates(updates, chat, text):
     send_message("hi user", chat, keyboard)
 
 
-def handle_updates(updates):
-    for update in updates["result"]:
-        text = update["message"]["text"]
-        chat = update["message"]["chat"]["id"]
-        # items = db.get_items(chat)
-        if str(chat) in admins.keys():
-            handle_admin_updates(updates, chat, text, admins[str(chat)])
-        else:
-            handle_user_updates(updates, chat, text)
-
-
-def send_message(text, chat_id, reply_markup=None):
-    text = urllib.parse.quote_plus(text)
-    url = URL + "sendMessage?text={}&chat_id={}&parse_mode=Markdown".format(text, chat_id)
-    if reply_markup:
-        url += "&reply_markup={}".format(reply_markup)
-    get_url(url)
-
-
-def build_keyboard(items):
-    keyboard = [[item] for item in items]
-    reply_markup = {"keyboard": keyboard, "one_time_keyboard": True}
-    return json.dumps(reply_markup)
-
-
 def main():
     db.setup()
-    db.add_shekel(250, 'asd', 'asd ', '2021-08-25 19:35:31.216540', 'הכנסה')
-    db.add_shekel(250, 'asd', 'asd ', '2021-08-25 19:35:31.216540', 'הכנסה')
     items = db.get_items()
     for key in items:
         print(key)

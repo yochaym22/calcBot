@@ -189,6 +189,6 @@ class DBHelper:
 
     def execute_search_query(self, stmt, args):
         cur = self.conn.cursor()
-        cur.execute(stmt, [args])
+        cur.execute(stmt, args)
         rows = cur.fetchall()
         return rows
