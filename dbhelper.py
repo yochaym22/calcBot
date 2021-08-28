@@ -87,7 +87,7 @@ class DBHelper:
         self.conn.commit()
 
     def update_bank_count_at(self, table_name, amount):
-        current_amount = self.get_items_from_table(table_name)
+        current_amount = self.get_sum_for_table(table_name)
         new_sum = current_amount + int(float(amount))
         stmt = f"UPDATE BANK set sum = (?) WHERE name = ?"
         args = [new_sum, table_name]
@@ -153,8 +153,8 @@ class DBHelper:
     def sum_tables_until_date(self, args):
         stmt = "SELECT * from SHEKELHISTORY where date < (?)"
         stmt2 = "SELECT * from DOLLARHISTORY where date < (?)"
-        results = {"shekel": self.execute_search_query(stmt, args),
-                   "dollar": self.execute_search_query(stmt2, args)}
+        results = {"shekel": self.execute_search_query(stmt, [args]),
+                   "dollar": self.execute_search_query(stmt2, [args])}
         sum_dict = {"shekel": 0,
                     "dollar": 0}
         for key in results.keys():
@@ -173,6 +173,6 @@ class DBHelper:
 
     def execute_search_query(self, stmt, args):
         cur = self.conn.cursor()
-        cur.execute(stmt, [args])
+        cur.execute(stmt, args)
         rows = cur.fetchall()
         return rows

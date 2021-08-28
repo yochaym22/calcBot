@@ -11,8 +11,8 @@ import src
 UPDATE_ID_TUPLE_INDEX = 2
 TOKEN = src.TOKEN
 URL = "https://api.telegram.org/bot{}/".format(TOKEN)
-admins = {}
-users = {src.admin: False}
+admins = {src.admin: True}
+users = {None}
 states = {"הכנסה": False, "הוצאה": False, "חיפוש": False, "גיבוי": False, "איפוס": False, "עדכונים": False,
           "היסטוריית פעולות": False}
 update_states = {'משתמש א': False, 'משתמש ב': False, 'קופה': False, 'קופה$': False}
@@ -388,7 +388,6 @@ def handle_user_updates(updates, chat, text, is_first_visit):
     else:
         user_state = get_current_state(user_states)
         handle_user_state_request(user_state, chat, text)
-
 
 
 def main():
